@@ -27,7 +27,40 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const bowls = [];
   const AUDIO_SRC = "./assets/clinamen-loop-64k.mp3";
   const modelChoice = new URLSearchParams(window.location.search).get("model");
-  const BOWL_MODEL_SRCS = [modelChoice === "base2" ? "./assets/base2.glb" : "./assets/base3.glb"];
+  const BOWL_MODEL_OPTIONS = {
+    base2: {
+      src: "./assets/base2.glb",
+      contactYOffset: 0.08,
+      contactNearYOffset: 0.07,
+      contactWidth: 0.98,
+      contactHeight: 0.40,
+      contactNearHeight: 0.24,
+      contactAlpha: 0.15,
+      contactNearAlpha: 0.07,
+    },
+    base3: {
+      src: "./assets/base3.glb",
+      contactYOffset: 0.08,
+      contactNearYOffset: 0.07,
+      contactWidth: 0.98,
+      contactHeight: 0.40,
+      contactNearHeight: 0.24,
+      contactAlpha: 0.15,
+      contactNearAlpha: 0.07,
+    },
+    base4: {
+      src: "./assets/base4.glb",
+      contactYOffset: 0.10,
+      contactNearYOffset: 0.09,
+      contactWidth: 1.04,
+      contactHeight: 0.44,
+      contactNearHeight: 0.26,
+      contactAlpha: 0.16,
+      contactNearAlpha: 0.08,
+    },
+  };
+  const activeBowlModel = BOWL_MODEL_OPTIONS[modelChoice] || BOWL_MODEL_OPTIONS.base4;
+  const BOWL_MODEL_SRCS = [activeBowlModel.src];
   const projectedBowl = new THREE.Vector3();
 
   let width = 1;
@@ -407,13 +440,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       const farT = 1 - depthT;
       const base = count * 4;
       const bottomOffsetY = b.r * (0.62 + farT * 1.08);
-      const contactOffsetY = b.r * (0.08 + nearT * 0.07);
+      const contactOffsetY = b.r * (activeBowlModel.contactYOffset + nearT * activeBowlModel.contactNearYOffset);
       waterSurfaceShadowData[base] = screenX / width;
       waterSurfaceShadowData[base + 1] = (screenY + contactOffsetY) / height;
-      waterSurfaceShadowData[base + 2] = (b.r * 0.98) / width;
-      waterSurfaceShadowData[base + 3] = (b.r * (0.40 + nearT * 0.24 + farT * 0.04)) / height;
+      waterSurfaceShadowData[base + 2] = (b.r * activeBowlModel.contactWidth) / width;
+      waterSurfaceShadowData[base + 3] = (b.r * (activeBowlModel.contactHeight + nearT * activeBowlModel.contactNearHeight + farT * 0.04)) / height;
       const visibleFade = smoothstep(height * 0.20, height * 0.36, screenY);
-      waterSurfaceShadowAlpha[count] = (0.15 + nearT * 0.07) * visibleFade;
+      waterSurfaceShadowAlpha[count] = (activeBowlModel.contactAlpha + nearT * activeBowlModel.contactNearAlpha) * visibleFade;
       waterShadowData[base] = screenX / width;
       waterShadowData[base + 1] = (screenY + bottomOffsetY) / height;
       waterShadowData[base + 2] = (b.r * (0.86 + farT * 0.22)) / width;
