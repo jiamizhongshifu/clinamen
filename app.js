@@ -25,8 +25,9 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const pointer = { x: 0, y: 0, px: 0, py: 0, down: false, active: false };
   const ripples = [];
   const bowls = [];
-  const AUDIO_SRC = "https://clinamen.vercel.app/assets/clinamen-loop.mp3";
+  const AUDIO_SRC = "./assets/clinamen-loop-64k.mp3";
   const BOWL_MODEL_SRCS = ["./assets/base2.glb"];
+  const projectedBowl = new THREE.Vector3();
 
   let width = 1;
   let height = 1;
@@ -366,9 +367,18 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     let count = 0;
     for (const b of bowls) {
       if (count >= MAX_WATER_SHADOWS) break;
-      const screenX = b.x;
-      const screenY = b.y;
-      if (screenX < b.r * 0.35 || screenX > width - b.r * 0.35 || screenY < Math.max(height * 0.08, b.r * 0.75) || screenY > height - b.r * 0.2) continue;
+      let screenX = b.x;
+      let screenY = b.y;
+      if (bowlModelsReady && b.model) {
+        updateBowlModel(b, now);
+        b.model.updateMatrixWorld(true);
+        projectedBowl.setFromMatrixPosition(b.model.matrixWorld).project(threeCamera);
+        screenX = (projectedBowl.x * 0.5 + 0.5) * width;
+        screenY = (0.5 - projectedBowl.y * 0.5) * height;
+        const anchorDepthT = smoothstep(-b.r * 0.2, height + b.r * 0.55, b.y);
+        screenY += b.r * (0.10 + (1 - anchorDepthT) * 0.24);
+      }
+      if (screenX < b.r * 0.35 || screenX > width - b.r * 0.35 || screenY < Math.max(height * 0.14, b.r * 0.85) || screenY > height - b.r * 0.2) continue;
       const depthT = smoothstep(height * 0.16, height - b.r * 0.18, screenY);
       const nearT = depthT;
       const farT = 1 - depthT;
@@ -379,12 +389,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       waterSurfaceShadowData[base + 1] = (screenY + contactOffsetY) / height;
       waterSurfaceShadowData[base + 2] = (b.r * 0.86) / width;
       waterSurfaceShadowData[base + 3] = (b.r * (0.32 + nearT * 0.16 + farT * 0.04)) / height;
-      waterSurfaceShadowAlpha[count] = 0.082 * smoothstep(height * 0.20, height * 0.34, screenY);
+      const visibleFade = smoothstep(height * 0.20, height * 0.36, screenY);
+      waterSurfaceShadowAlpha[count] = 0.082 * visibleFade;
       waterShadowData[base] = screenX / width;
       waterShadowData[base + 1] = (screenY + bottomOffsetY) / height;
       waterShadowData[base + 2] = (b.r * (0.86 + farT * 0.22)) / width;
       waterShadowData[base + 3] = (b.r * (0.70 - farT * 0.12)) / height;
-      waterShadowAlpha[count] = 0.14 + farT * 0.22;
+      waterShadowAlpha[count] = (0.14 + farT * 0.22) * visibleFade;
       count += 1;
     }
     waterGL.useProgram(waterProgram);
