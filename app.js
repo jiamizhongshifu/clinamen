@@ -606,7 +606,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
         void main() {
           vec3 n = normalize(vNormal);
-          vec3 light = normalize(vec3(-0.004, 0.999, 0.022));
+          vec3 light = normalize(vec3(-0.012, 0.996, 0.055));
           vec3 viewDir = normalize(cameraPosition - vWorld);
           float h = clamp((vLocal.y - low) / max(0.001, high - low), 0.0, 1.0);
           float lambert = max(dot(n, light), 0.0);
@@ -616,17 +616,11 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.36, 0.50, 0.54);
-          vec3 innerCol = mix(tint, vec3(1.0, 0.994, 0.965), 0.48);
-          float innerLight = smoothstep(0.16, 0.60, h);
-          float upperInterior = smoothstep(0.24, 0.76, h);
-          float outerWall = smoothstep(0.12, 0.80, 1.0 - abs(n.y)) * (1.0 - smoothstep(0.46, 0.84, h));
-          vec3 col = mix(sideCol, innerCol, innerLight);
-          col = mix(col, vec3(1.0, 0.997, 0.972), upperInterior * (0.76 - outerWall * 0.36));
-          col *= 0.92 + wrap * 0.36;
-          col *= 1.0 - outerWall * 0.18;
-          col = mix(col, vec3(0.08, 0.52, 0.66), outerWall * 0.42);
-          col += upperInterior * vec3(0.045, 0.040, 0.026);
+          vec3 sideCol = vec3(0.60, 0.62, 0.60);
+          vec3 innerCol = tint;
+          vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
+          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
+          col *= 0.97 + wrap * 0.30;
           col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
 
           float glowDistance = distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04));
@@ -634,12 +628,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float coreGlow = 1.0 - smoothstep(0.0, 0.30, glowDistance);
           col += (broadGlow * 0.11 + coreGlow * 0.018) * smoothstep(0.16, 0.74, h) * vec3(1.0, 0.93, 0.62);
 
-          float submerged = 1.0 - smoothstep(0.48, 0.82, h);
+          float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
           float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
-          vec3 waterTint = vec3(0.05, 0.62, 0.78);
-          col = mix(col, waterTint, lowerWall * 0.56);
-          col += lowerWall * vec3(0.00, 0.09, 0.13) * (0.24 + specA * 0.24);
+          vec3 waterTint = vec3(0.07, 0.60, 0.74);
+          col = mix(col, waterTint, lowerWall * 0.42);
+          col += lowerWall * vec3(0.00, 0.08, 0.11) * (0.32 + specA * 0.45);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
