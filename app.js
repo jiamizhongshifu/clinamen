@@ -616,7 +616,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.52, 0.60, 0.62);
+          vec3 sideCol = vec3(0.38, 0.58, 0.70);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
           col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
@@ -631,11 +631,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
           float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
-          float waterAmbient = sideFacing * (1.0 - smoothstep(0.34, 0.88, h));
-          vec3 waterTint = vec3(0.07, 0.60, 0.74);
-          col = mix(col, waterTint, waterAmbient * 0.18);
-          col = mix(col, waterTint, lowerWall * 0.42);
-          col += lowerWall * vec3(0.00, 0.08, 0.11) * (0.32 + specA * 0.45);
+          float waterAmbient = sideFacing * (1.0 - smoothstep(0.28, 0.90, h));
+          vec3 waterTint = vec3(0.06, 0.64, 0.80);
+          col = mix(col, waterTint, waterAmbient * 0.44);
+          col = mix(col, waterTint, lowerWall * 0.62);
+          col += waterAmbient * vec3(0.00, 0.060, 0.080);
+          col += lowerWall * vec3(0.00, 0.09, 0.13) * (0.42 + specA * 0.45);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -875,10 +876,19 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     return clamp(Math.round(area / 28000), width < 700 ? 24 : 34, width < 700 ? 32 : 46);
   }
 
-  function bowlBounds(b) {
+  function bowlHorizontalBounds(r, y) {
+    const depthT = depthForY(y);
     return {
-      minX: b.r * 0.58,
-      maxX: width - b.r * 0.48,
+      minX: r * (0.92 + depthT * 0.20),
+      maxX: width - r * (0.86 + depthT * 0.18),
+    };
+  }
+
+  function bowlBounds(b) {
+    const xBounds = bowlHorizontalBounds(b.r, b.y);
+    return {
+      minX: xBounds.minX,
+      maxX: xBounds.maxX,
       minY: Math.max(height * 0.08, b.r * 0.72),
       maxY: height - b.r * 0.18,
     };
@@ -896,7 +906,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     const count = bowlCount();
     const farQuota = Math.round(count * 0.42);
 
-    for (let i = 0; i < count; i += 1) {
+    for (let slot = 0; bowls.length < count && slot < count * 6; slot += 1) {
+      const placedIndex = bowls.length;
       let x = 0;
       let y = 0;
       let r = 0;
@@ -904,8 +915,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       let placed = false;
 
       for (let attempt = 0; attempt < 900 && !placed; attempt += 1) {
-        const farBand = i < farQuota;
-        const groupIndex = farBand ? i / Math.max(1, farQuota) : (i - farQuota) / Math.max(1, count - farQuota);
+        const farBand = placedIndex < farQuota;
+        const groupIndex = farBand
+          ? placedIndex / Math.max(1, farQuota)
+          : (placedIndex - farQuota) / Math.max(1, count - farQuota);
         const yNorm = farBand
           ? clamp(0.07 + rand() * 0.30 + groupIndex * 0.05, 0.055, 0.42)
           : clamp(0.30 + Math.pow(groupIndex, 1.14) * 0.64 + (rand() - 0.5) * 0.08, 0.26, 0.94);
@@ -913,38 +926,34 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         if (farBand) baseR *= 0.72 + rand() * 0.26;
         else if (yNorm > 0.70 && rand() > 0.55) baseR *= 1.05 + rand() * 0.18;
         else if (rand() > 0.82) baseR *= 0.72 + rand() * 0.18;
-        x = ((i * 0.61803398875 + rand() * 0.18 + attempt * 0.071) % 1) * width;
+        const laneCount = farBand ? 9 : 8;
+        const rowIndex = Math.floor(placedIndex / laneCount);
+        const lane = (placedIndex * 3 + rowIndex * 2 + attempt) % laneCount;
+        const laneJitter = (rand() - 0.5) * (farBand ? 0.38 : 0.30);
+        x = ((lane + 0.5 + laneJitter) / laneCount) * width;
         y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.065) * height;
         r = baseR * perspectiveScaleForY(y);
 
-        if (rand() > 0.88) x += (rand() > 0.5 ? 1 : -1) * width * 0.08;
-        x = clamp(x, r * 0.58, width - r * 0.48);
+        if (rand() > 0.95) x += (rand() > 0.5 ? 1 : -1) * width * 0.045;
+        const xBounds = bowlHorizontalBounds(r, y);
+        x = clamp(x, xBounds.minX, xBounds.maxX);
         y = clamp(y, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
         r = baseR * perspectiveScaleForY(y);
 
         placed = bowls.every((b) => {
           const dy = Math.abs(b.y - y);
-          const perspectiveGap = dy < (b.r + r) * 0.76 ? 0.76 : 0.52;
+          const perspectiveGap = dy < (b.r + r) * 1.12 ? 1.05 : 0.72;
           return Math.hypot(b.x - x, b.y - y) > (b.r + r) * perspectiveGap;
         });
 
         if (!placed && attempt > 620) {
           baseR *= 0.88;
           r = baseR * perspectiveScaleForY(y);
-          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.44);
+          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.62);
         }
       }
 
-      if (i > 0 && i % 6 === 0) {
-        const anchor = bowls[Math.floor(rand() * bowls.length)];
-        if (anchor) {
-          const a = rand() * TAU;
-          const d = (anchor.r + r) * (1.12 + rand() * 0.24);
-          x = clamp(anchor.x + Math.cos(a) * d, r * 0.58, width - r * 0.48);
-          y = clamp(anchor.y + Math.sin(a) * d * 0.54, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
-          r = baseR * perspectiveScaleForY(y);
-        }
-      }
+      if (!placed) continue;
 
       const mass = r * r * 0.012;
       const style = 0;
@@ -968,7 +977,82 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         lift: 0,
       });
     }
+    spreadBowlBands(0.68);
+    settleBowlSpacing();
+    spreadBowlBands(0.36);
+    settleBowlSpacing();
     syncBowlModels();
+  }
+
+  function spreadBowlBands(strength) {
+    const bands = Array.from({ length: 6 }, () => []);
+    for (const b of bowls) {
+      const band = clamp(Math.floor(depthForY(b.y) * bands.length), 0, bands.length - 1);
+      bands[band].push(b);
+    }
+
+    for (const bandBowls of bands) {
+      if (bandBowls.length < 3) continue;
+      bandBowls.sort((a, b) => a.x - b.x);
+      const avgDepth = bandBowls.reduce((sum, b) => sum + depthForY(b.y), 0) / bandBowls.length;
+      const left = width * (0.055 + avgDepth * 0.045);
+      const right = width * (0.945 - avgDepth * 0.055);
+      const span = Math.max(width * 0.4, right - left);
+
+      for (let i = 0; i < bandBowls.length; i += 1) {
+        const b = bandBowls[i];
+        const jitter = Math.sin(b.phase * 1.7 + i * 2.31) * span * 0.018;
+        const targetX = left + span * ((i + 0.5) / bandBowls.length) + jitter;
+        b.x += (targetX - b.x) * strength;
+        updateBowlScreenSize(b);
+        const bounds = bowlBounds(b);
+        b.x = clamp(b.x, bounds.minX, bounds.maxX);
+        b.homeX = b.x;
+      }
+    }
+  }
+
+  function settleBowlSpacing() {
+    for (let pass = 0; pass < 72; pass += 1) {
+      for (let i = 0; i < bowls.length; i += 1) {
+        for (let j = i + 1; j < bowls.length; j += 1) {
+          const a = bowls[i];
+          const b = bowls[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const sameDepth = 1 - clamp(Math.abs(dy) / Math.max(height * 0.22, 1), 0, 0.42);
+          const target = (a.r + b.r) * (0.94 + sameDepth * 0.48);
+          if (dist >= target) continue;
+
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const push = (target - dist) * 0.58;
+          const total = a.mass + b.mass;
+          const ax = nx * push * (b.mass / total);
+          const ay = ny * push * (b.mass / total) * 0.58;
+          const bx = nx * push * (a.mass / total);
+          const by = ny * push * (a.mass / total) * 0.58;
+          a.x -= ax;
+          a.y -= ay;
+          b.x += bx;
+          b.y += by;
+        }
+      }
+
+      for (const b of bowls) {
+        updateBowlScreenSize(b);
+        const bounds = bowlBounds(b);
+        b.x = clamp(b.x, bounds.minX, bounds.maxX);
+        b.y = clamp(b.y, bounds.minY, bounds.maxY);
+      }
+    }
+
+    for (const b of bowls) {
+      updateBowlScreenSize(b);
+      b.homeX = b.x;
+      b.homeY = b.y;
+    }
   }
 
   function initAudioTrack() {
@@ -1096,12 +1180,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy) || 1;
         const minDist = (a.r + b.r) * 1.02;
-        const nearDist = minDist * 1.62;
+        const nearDist = minDist * 1.16;
 
         if (dist > minDist && dist < nearDist) {
           const nx = dx / dist;
           const ny = dy / dist;
-          const pull = (1 - (dist - minDist) / (nearDist - minDist)) * 0.00118 * dt;
+          const pull = (1 - (dist - minDist) / (nearDist - minDist)) * 0.00008 * dt;
           a.vx += nx * pull * (b.mass / (a.mass + b.mass));
           a.vy += ny * pull * (b.mass / (a.mass + b.mass)) * 0.62;
           b.vx -= nx * pull * (a.mass / (a.mass + b.mass));
