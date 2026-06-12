@@ -616,10 +616,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.38, 0.58, 0.70);
+          vec3 sideCol = vec3(0.12, 0.44, 0.68);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
-          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
+          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.34, 0.94, h) * 0.42);
           col *= 0.97 + wrap * 0.30;
           col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
 
@@ -631,12 +631,14 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
           float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
-          float waterAmbient = sideFacing * (1.0 - smoothstep(0.28, 0.90, h));
-          vec3 waterTint = vec3(0.06, 0.64, 0.80);
-          col = mix(col, waterTint, waterAmbient * 0.44);
-          col = mix(col, waterTint, lowerWall * 0.62);
-          col += waterAmbient * vec3(0.00, 0.060, 0.080);
-          col += lowerWall * vec3(0.00, 0.09, 0.13) * (0.42 + specA * 0.45);
+          float waterAmbient = sideFacing * (1.0 - smoothstep(0.24, 0.88, h));
+          float waterSideBand = sideFacing * (1.0 - smoothstep(0.38, 0.78, h));
+          vec3 waterTint = vec3(0.00, 0.56, 0.80);
+          vec3 deepWaterTint = vec3(0.00, 0.42, 0.70);
+          col = mix(col, waterTint, waterAmbient * 0.62);
+          col = mix(col, deepWaterTint, waterSideBand * 0.52 + lowerWall * 0.82);
+          col += waterAmbient * vec3(0.00, 0.09, 0.13);
+          col += lowerWall * vec3(0.00, 0.13, 0.19) * (0.54 + specA * 0.45);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -873,7 +875,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
   function bowlCount() {
     const area = width * height;
-    return clamp(Math.round(area / 28000), width < 700 ? 24 : 34, width < 700 ? 32 : 46);
+    return clamp(Math.round(area / 36000), width < 700 ? 18 : 25, width < 700 ? 26 : 34);
   }
 
   function bowlHorizontalBounds(r, y) {
@@ -929,9 +931,9 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         const laneCount = farBand ? 9 : 8;
         const rowIndex = Math.floor(placedIndex / laneCount);
         const lane = (placedIndex * 3 + rowIndex * 2 + attempt) % laneCount;
-        const laneJitter = (rand() - 0.5) * (farBand ? 0.38 : 0.30);
+        const laneJitter = (rand() - 0.5) * (farBand ? 0.68 : 0.56);
         x = ((lane + 0.5 + laneJitter) / laneCount) * width;
-        y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.065) * height;
+        y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.095) * height;
         r = baseR * perspectiveScaleForY(y);
 
         if (rand() > 0.95) x += (rand() > 0.5 ? 1 : -1) * width * 0.045;
@@ -977,9 +979,9 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         lift: 0,
       });
     }
-    spreadBowlBands(0.68);
+    spreadBowlBands(0.16);
     settleBowlSpacing();
-    spreadBowlBands(0.36);
+    spreadBowlBands(0.06);
     settleBowlSpacing();
     syncBowlModels();
   }
@@ -1022,12 +1024,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           const dy = b.y - a.y;
           const dist = Math.hypot(dx, dy) || 1;
           const sameDepth = 1 - clamp(Math.abs(dy) / Math.max(height * 0.22, 1), 0, 0.42);
-          const target = (a.r + b.r) * (0.94 + sameDepth * 0.48);
+          const target = (a.r + b.r) * (1.05 + sameDepth * 0.58);
           if (dist >= target) continue;
 
           const nx = dx / dist;
           const ny = dy / dist;
-          const push = (target - dist) * 0.58;
+          const push = (target - dist) * 0.66;
           const total = a.mass + b.mass;
           const ax = nx * push * (b.mass / total);
           const ay = ny * push * (b.mass / total) * 0.58;
