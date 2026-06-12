@@ -301,11 +301,11 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           vec4 ns = uSurfaceBowls[i];
           vec2 nq = (warpedUv - ns.xy) / max(ns.zw, vec2(0.0001));
           float nd = dot(nq, nq);
-          float arcBand = 1.0 - smoothstep(0.040, 0.105, abs(nd - 0.76));
-          float lowerArc = smoothstep(0.12, 0.46, nq.y) * (1.0 - smoothstep(0.82, 1.02, nq.y));
+          float arcBand = 1.0 - smoothstep(0.024, 0.072, abs(nd - 0.76));
+          float lowerArc = smoothstep(0.18, 0.52, nq.y) * (1.0 - smoothstep(0.92, 1.10, nq.y));
           float sideFade = 1.0 - smoothstep(0.98, 1.18, abs(nq.x));
           float arcGlint = 1.0 - smoothstep(0.018, 0.058, abs(nd - 0.84));
-          contactReflection += (arcBand * 0.70 + arcGlint * 0.30) * lowerArc * sideFade * uSurfaceOpacity[i];
+          contactReflection += (arcBand * 0.66 + arcGlint * 0.34) * lowerArc * sideFade * uSurfaceOpacity[i];
 
           vec4 s = uBowls[i];
           vec2 q = (warpedUv - s.xy) / max(s.zw, vec2(0.0001));
@@ -398,13 +398,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       const farT = 1 - depthT;
       const base = count * 4;
       const bottomOffsetY = b.r * (0.62 + farT * 1.08);
-      const contactOffsetY = b.r * (0.12 + nearT * 0.08);
+      const contactOffsetY = b.r * (0.08 + nearT * 0.07);
       waterSurfaceShadowData[base] = screenX / width;
       waterSurfaceShadowData[base + 1] = (screenY + contactOffsetY) / height;
-      waterSurfaceShadowData[base + 2] = (b.r * 0.86) / width;
-      waterSurfaceShadowData[base + 3] = (b.r * (0.32 + nearT * 0.16 + farT * 0.04)) / height;
+      waterSurfaceShadowData[base + 2] = (b.r * 0.98) / width;
+      waterSurfaceShadowData[base + 3] = (b.r * (0.40 + nearT * 0.24 + farT * 0.04)) / height;
       const visibleFade = smoothstep(height * 0.20, height * 0.36, screenY);
-      waterSurfaceShadowAlpha[count] = 0.082 * visibleFade;
+      waterSurfaceShadowAlpha[count] = (0.15 + nearT * 0.07) * visibleFade;
       waterShadowData[base] = screenX / width;
       waterShadowData[base + 1] = (screenY + bottomOffsetY) / height;
       waterShadowData[base + 2] = (b.r * (0.86 + farT * 0.22)) / width;
@@ -804,7 +804,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
   function bowlCount() {
     const area = width * height;
-    return clamp(Math.round(area / 38000), 20, width < 700 ? 24 : 32);
+    return clamp(Math.round(area / 43000), 18, width < 700 ? 22 : 28);
   }
 
   function bowlBounds(b) {
@@ -836,7 +836,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       for (let attempt = 0; attempt < 900 && !placed; attempt += 1) {
         const yNorm = (i + 0.05 + rand() * 0.78) / count;
         const perspective = 0.54 + yNorm ** 1.38 * 1.92;
-        r = (width < 700 ? 19 : 25) * perspective + rand() * (width < 700 ? 13 : 20);
+        r = ((width < 700 ? 19 : 25) * perspective + rand() * (width < 700 ? 13 : 20)) * 1.3;
         x = ((i * 0.61803398875 + rand() * 0.18 + attempt * 0.071) % 1) * width;
         y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.065) * height;
 
