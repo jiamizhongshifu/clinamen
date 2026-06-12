@@ -83,17 +83,17 @@ canvas {
 
 .depth-haze {
   position: absolute;
-  inset: -3vh 0 auto;
+  inset: -2vh 0 auto;
   z-index: 4;
-  height: 62vh;
+  height: 37vh;
   pointer-events: none;
   background:
     radial-gradient(ellipse at 50% 18%, rgba(5, 76, 112, 0.18), transparent 54%),
     linear-gradient(to bottom, rgba(0, 55, 88, 0.36), rgba(0, 96, 130, 0.20) 48%, rgba(10, 181, 218, 0.02) 100%);
-  backdrop-filter: blur(5.2px) saturate(0.9) contrast(0.96);
-  -webkit-backdrop-filter: blur(5.2px) saturate(0.9) contrast(0.96);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.94) 34%, rgba(0, 0, 0, 0.38) 73%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.94) 34%, rgba(0, 0, 0, 0.38) 73%, transparent 100%);
+  backdrop-filter: blur(4.8px) saturate(0.9) contrast(0.96);
+  -webkit-backdrop-filter: blur(4.8px) saturate(0.9) contrast(0.96);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.88) 38%, rgba(0, 0, 0, 0.34) 76%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.88) 38%, rgba(0, 0, 0, 0.34) 76%, transparent 100%);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -102,6 +102,47 @@ canvas {
       radial-gradient(ellipse at 50% 18%, rgba(5, 76, 112, 0.20), transparent 54%),
       linear-gradient(to bottom, rgba(0, 55, 88, 0.42), rgba(0, 96, 130, 0.24) 48%, rgba(10, 181, 218, 0.02) 100%);
   }
+}
+
+.social-links {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 9;
+  display: flex;
+  gap: 10px;
+}
+
+.social-links a {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(235, 252, 255, 0.58);
+  border-radius: 999px;
+  color: rgba(235, 252, 255, 0.88);
+  background: rgba(0, 92, 132, 0.18);
+  box-shadow:
+    0 12px 34px rgba(0, 62, 92, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.social-links a:hover {
+  color: rgba(255, 255, 255, 0.98);
+  background: rgba(0, 115, 160, 0.28);
+  transform: translateY(-1px);
+}
+
+.social-links svg {
+  width: 54%;
+  height: 54%;
+  fill: currentColor;
 }
 
 .title {
@@ -257,5 +298,15 @@ canvas {
   .dock {
     right: 12px;
     bottom: 12px;
+  }
+
+  .social-links {
+    top: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+
+  .social-links a {
+    width: 34px;
   }
 }
