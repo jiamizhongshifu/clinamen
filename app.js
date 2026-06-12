@@ -594,18 +594,20 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float backLambert = max(dot(-n, light), 0.0);
           float wrap = max(lambert, backLambert * 0.46);
           vec3 halfDir = normalize(light + viewDir);
-          float specA = pow(max(dot(n, halfDir), 0.0), 24.0);
-          float specB = pow(max(dot(-n, halfDir), 0.0), 30.0) * 0.50;
+          float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
+          float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
           vec3 sideCol = vec3(0.60, 0.62, 0.60);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
           col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
           col *= 0.97 + wrap * 0.30;
-          col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.22;
+          col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
 
-          float centerGlow = 1.0 - smoothstep(0.0, 0.34, distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04)));
-          col += centerGlow * smoothstep(0.20, 0.74, h) * vec3(0.15, 0.132, 0.085);
+          float glowDistance = distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04));
+          float broadGlow = 1.0 - smoothstep(0.0, 0.76, glowDistance);
+          float coreGlow = 1.0 - smoothstep(0.0, 0.30, glowDistance);
+          col += (broadGlow * 0.11 + coreGlow * 0.018) * smoothstep(0.16, 0.74, h) * vec3(1.0, 0.93, 0.62);
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
