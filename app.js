@@ -50,13 +50,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     },
     base4: {
       src: "./assets/base4.glb",
-      contactYOffset: 0.10,
-      contactNearYOffset: 0.09,
-      contactWidth: 1.04,
-      contactHeight: 0.44,
-      contactNearHeight: 0.26,
-      contactAlpha: 0.16,
-      contactNearAlpha: 0.08,
+      contactYOffset: -0.025,
+      contactNearYOffset: 0.065,
+      contactWidth: 1.00,
+      contactHeight: 0.40,
+      contactNearHeight: 0.22,
+      contactAlpha: 0.15,
+      contactNearAlpha: 0.065,
     },
   };
   const activeBowlModel = BOWL_MODEL_OPTIONS[modelChoice] || BOWL_MODEL_OPTIONS.base4;
@@ -496,7 +496,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     threeRenderer.setClearColor(0x000000, 0);
     threeRenderer.outputColorSpace = THREE.SRGBColorSpace;
     threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    threeRenderer.toneMappingExposure = 1.08;
+    threeRenderer.toneMappingExposure = 1.13;
 
     threeScene = new THREE.Scene();
     threeCamera = new THREE.OrthographicCamera(-width * 0.5, width * 0.5, height * 0.5, -height * 0.5, -3000, 3000);
@@ -505,8 +505,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     threeScene.add(new THREE.AmbientLight(0xffffff, 1.25));
     const hemi = new THREE.HemisphereLight(0xffffff, 0x13a6c7, 1.15);
     threeScene.add(hemi);
-    const key = new THREE.DirectionalLight(0xffffff, 4.1);
-    key.position.set(-0.10, 1.55, 0.18);
+    const key = new THREE.DirectionalLight(0xffffff, 4.6);
+    key.position.set(-0.02, 2.25, 0.06);
     threeScene.add(key);
     const fill = new THREE.DirectionalLight(0xd7fbff, 0.55);
     fill.position.set(0.45, 0.32, 0.26);
@@ -587,25 +587,25 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
         void main() {
           vec3 n = normalize(vNormal);
-          vec3 light = normalize(vec3(-0.10, 0.86, 0.32));
+          vec3 light = normalize(vec3(-0.012, 0.996, 0.055));
           vec3 viewDir = normalize(cameraPosition - vWorld);
           float h = clamp((vLocal.y - low) / max(0.001, high - low), 0.0, 1.0);
           float lambert = max(dot(n, light), 0.0);
           float backLambert = max(dot(-n, light), 0.0);
-          float wrap = max(lambert, backLambert * 0.58);
+          float wrap = max(lambert, backLambert * 0.46);
           vec3 halfDir = normalize(light + viewDir);
-          float specA = pow(max(dot(n, halfDir), 0.0), 30.0);
-          float specB = pow(max(dot(-n, halfDir), 0.0), 38.0) * 0.42;
+          float specA = pow(max(dot(n, halfDir), 0.0), 24.0);
+          float specB = pow(max(dot(-n, halfDir), 0.0), 30.0) * 0.50;
 
           vec3 sideCol = vec3(0.60, 0.62, 0.60);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
-          col = mix(col, vec3(0.98, 0.97, 0.92), smoothstep(0.30, 0.96, h) * 0.34);
-          col *= 0.90 + wrap * 0.17;
-          col += vec3(1.0, 0.98, 0.90) * (specA + specB) * 0.13;
+          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
+          col *= 0.97 + wrap * 0.30;
+          col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.22;
 
           float centerGlow = 1.0 - smoothstep(0.0, 0.34, distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04)));
-          col += centerGlow * smoothstep(0.28, 0.78, h) * vec3(0.08, 0.07, 0.04);
+          col += centerGlow * smoothstep(0.20, 0.74, h) * vec3(0.15, 0.132, 0.085);
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
