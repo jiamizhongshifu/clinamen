@@ -616,7 +616,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.12, 0.44, 0.68);
+          vec3 sideCol = vec3(0.66, 0.68, 0.66);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
           col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.34, 0.94, h) * 0.42);
@@ -630,9 +630,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
-          float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
-          float waterAmbient = sideFacing * (1.0 - smoothstep(0.24, 0.88, h));
-          float waterSideBand = sideFacing * (1.0 - smoothstep(0.38, 0.78, h));
+          vec2 radialDir = normalize(vLocal.xz + vec2(0.0001, -0.0001));
+          float radialOut = dot(normalize(n.xz + vec2(0.0001, 0.0001)), radialDir);
+          float exteriorFace = gl_FrontFacing ? 1.0 : 0.0;
+          float outerWall = exteriorFace * sideFacing * smoothstep(0.08, 0.46, radialOut);
+          float lowerWall = submerged * outerWall * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
+          float waterAmbient = outerWall * (1.0 - smoothstep(0.30, 0.86, h));
+          float waterSideBand = outerWall * (1.0 - smoothstep(0.42, 0.80, h));
           vec3 waterTint = vec3(0.00, 0.56, 0.80);
           vec3 deepWaterTint = vec3(0.00, 0.42, 0.70);
           col = mix(col, waterTint, waterAmbient * 0.62);
