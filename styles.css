@@ -58,11 +58,11 @@ body {
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  background-image:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 80px),
-    linear-gradient(25deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 120px);
-  opacity: 0.28;
-  filter: blur(0.2px);
+  background:
+    linear-gradient(to bottom, rgba(0, 84, 124, 0.2), rgba(22, 184, 220, 0.06) 32%, transparent 60%);
+  opacity: 0.46;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.76) 28%, transparent 58%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.76) 28%, transparent 58%);
 }
 
 canvas {

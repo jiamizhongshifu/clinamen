@@ -19,9 +19,9 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const resetButton = document.querySelector("#reset");
 
   const TAU = Math.PI * 2;
-  const DPR = Math.min(window.devicePixelRatio || 1, 1.15);
+  const DPR = Math.min(window.devicePixelRatio || 1, 1);
   const SIM_NX = 144;
-  const MAX_WATER_SHADOWS = 24;
+  const MAX_WATER_SHADOWS = 32;
   const pointer = { x: 0, y: 0, px: 0, py: 0, down: false, active: false };
   const ripples = [];
   const bowls = [];
@@ -191,10 +191,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       uniform float uTime;
       uniform float uRefr;
       uniform int uBowlCount;
-      uniform vec4 uBowls[24];
-      uniform float uBowlOpacity[24];
-      uniform vec4 uSurfaceBowls[24];
-      uniform float uSurfaceOpacity[24];
+      uniform vec4 uBowls[32];
+      uniform float uBowlOpacity[32];
+      uniform vec4 uSurfaceBowls[32];
+      uniform float uSurfaceOpacity[32];
 
       float h(vec2 p) {
         return texture2D(uSim, clamp(p, 0.002, 0.998)).r - 0.5019608;
@@ -241,6 +241,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         vec3 deep = vec3(0.0, 0.48, 0.68);
         vec3 col = mix(shallow, middle, smoothstep(0.02, 0.56, puv.y));
         col = mix(col, deep, smoothstep(0.45, 1.0, puv.y) * 0.58);
+        float farPlane = 1.0 - smoothstep(0.20, 0.62, vUv.y);
+        col = mix(col, col * vec3(0.54, 0.76, 0.88), farPlane * 0.62);
 
         float softField = noise(puv * vec2(3.2, 4.4) + vec2(uTime * 0.018, -uTime * 0.012));
         softField += noise(puv * vec2(7.8, 6.6) + vec2(-uTime * 0.026, uTime * 0.014)) * 0.42;
@@ -266,9 +268,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         float surfaceFacet = smoothstep(0.010, 0.060, abs(waveSlope)) * (0.72 + rippleEnergy * 0.58);
         float skylightBreakup = noise(domeUv * vec2(18.0, 12.0) + grad * 24.0 + vec2(uTime * 0.028, -uTime * 0.022));
         float skylightStructure = domeFade * clamp(lightSpokes * 0.58 + lightRings * 0.42 + lightRim * 0.44, 0.0, 1.0);
-        skylightStructure *= smoothstep(0.16, 0.78, skylightBreakup + rippleEnergy * 0.36 + max(waveSlope, 0.0) * 1.28);
-        skylightStructure *= 0.62 + surfaceFacet * 0.78;
-        float skylightSurface = (skylightPool * 0.26 + skylightStructure * 0.90) * (0.60 + skylightBreath * 0.10 + surfaceFacet * 1.50);
+        skylightStructure *= 0.76 + surfaceFacet * 0.82 + skylightBreakup * 0.16;
+        float skylightSurface = (skylightPool * 0.22 + skylightStructure * 0.98) * (0.66 + skylightBreath * 0.08 + surfaceFacet * 1.42);
 
         float light = waveSlope;
         col += max(light, 0.0) * vec3(0.78, 1.0, 1.08) * 1.35;
@@ -283,7 +284,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         float bottomShadow = 0.0;
         float contactReflection = 0.0;
         vec2 warpedUv = vUv + grad * 0.18;
-        for (int i = 0; i < 24; i += 1) {
+        for (int i = 0; i < 32; i += 1) {
           if (i >= uBowlCount) break;
           vec4 ns = uSurfaceBowls[i];
           vec2 nq = (warpedUv - ns.xy) / max(ns.zw, vec2(0.0001));
@@ -306,17 +307,18 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         col = mix(col, col * vec3(0.40, 0.66, 0.73), bottomShadow);
         col += contactReflection * vec3(0.18, 0.78, 0.88);
         col = mix(col, vec3(0.58, 0.98, 1.0), contactReflection * 0.22);
-        col = mix(col, vec3(0.66, 1.0, 1.0), skylightPool * (0.050 + surfaceFacet * 0.046));
-        col = mix(col, vec3(0.74, 1.0, 1.0), skylightStructure * (0.086 + surfaceFacet * 0.092));
-        col += skylightSurface * vec3(0.22, 0.55, 0.58);
-        col += skylightStructure * max(light, 0.0) * vec3(0.60, 0.98, 0.98) * 0.86;
-
         vec2 poolCenter = vec2(0.42 + 0.2 * cos(uTime * 0.045), 0.36 + 0.16 * sin(uTime * 0.063));
         float pool = 1.0 - smoothstep(0.0, 0.58, distance(vUv * vec2(1.0, 1.25), poolCenter * vec2(1.0, 1.25)));
         col += pool * vec3(0.045, 0.075, 0.082);
 
         float vignette = smoothstep(0.34, 0.86, distance(vUv, vec2(0.5)));
         col = mix(col, col * vec3(0.78, 0.9, 0.96), vignette * 0.34);
+        col = mix(col, col * vec3(0.64, 0.80, 0.90), farPlane * 0.36);
+
+        col = mix(col, vec3(0.68, 1.0, 1.0), skylightPool * (0.064 + surfaceFacet * 0.050));
+        col = mix(col, vec3(0.78, 1.0, 1.0), skylightStructure * (0.118 + surfaceFacet * 0.112));
+        col += skylightSurface * vec3(0.27, 0.64, 0.66);
+        col += skylightStructure * max(light, 0.0) * vec3(0.64, 1.0, 1.0) * 0.92;
 
         gl_FragColor = vec4(col, 1.0);
       }
@@ -384,7 +386,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       const farT = 1 - depthT;
       const base = count * 4;
       const bottomOffsetY = b.r * (0.62 + farT * 1.08);
-      const contactOffsetY = b.r * (0.31 + nearT * 0.22);
+      const contactOffsetY = b.r * (0.12 + nearT * 0.08);
       waterSurfaceShadowData[base] = screenX / width;
       waterSurfaceShadowData[base + 1] = (screenY + contactOffsetY) / height;
       waterSurfaceShadowData[base + 2] = (b.r * 0.86) / width;
@@ -790,14 +792,14 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
   function bowlCount() {
     const area = width * height;
-    return clamp(Math.round(area / 56000), 14, width < 700 ? 16 : 22);
+    return clamp(Math.round(area / 43000), 18, width < 700 ? 20 : 28);
   }
 
   function bowlBounds(b) {
     return {
       minX: b.r * 0.58,
       maxX: width - b.r * 0.48,
-      minY: Math.max(height * 0.15, b.r * 0.95),
+      minY: Math.max(height * 0.08, b.r * 0.72),
       maxY: height - b.r * 0.18,
     };
   }
@@ -820,25 +822,25 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       let placed = false;
 
       for (let attempt = 0; attempt < 900 && !placed; attempt += 1) {
-        const yNorm = (i + 0.22 + rand() * 0.82) / count;
+        const yNorm = (i + 0.05 + rand() * 0.78) / count;
         const perspective = 0.54 + yNorm ** 1.38 * 1.92;
-        r = (width < 700 ? 20 : 27) * perspective + rand() * (width < 700 ? 15 : 23);
+        r = (width < 700 ? 19 : 25) * perspective + rand() * (width < 700 ? 13 : 20);
         x = ((i * 0.61803398875 + rand() * 0.18 + attempt * 0.071) % 1) * width;
-        y = (0.11 + yNorm * 0.82 + (rand() - 0.5) * 0.055) * height;
+        y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.065) * height;
 
         if (rand() > 0.88) x += (rand() > 0.5 ? 1 : -1) * width * 0.08;
         x = clamp(x, r * 0.58, width - r * 0.48);
-        y = clamp(y, Math.max(height * 0.15, r * 0.95), height - r * 0.18);
+        y = clamp(y, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
 
         placed = bowls.every((b) => {
           const dy = Math.abs(b.y - y);
-          const perspectiveGap = dy < (b.r + r) * 0.92 ? 1.02 : 0.84;
+          const perspectiveGap = dy < (b.r + r) * 0.84 ? 0.84 : 0.66;
           return Math.hypot(b.x - x, b.y - y) > (b.r + r) * perspectiveGap;
         });
 
         if (!placed && attempt > 620) {
           r *= 0.80;
-          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.74);
+          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.56);
         }
       }
 
@@ -848,7 +850,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           const a = rand() * TAU;
           const d = (anchor.r + r) * (1.12 + rand() * 0.24);
           x = clamp(anchor.x + Math.cos(a) * d, r * 0.58, width - r * 0.48);
-          y = clamp(anchor.y + Math.sin(a) * d * 0.54, Math.max(height * 0.15, r * 0.95), height - r * 0.18);
+          y = clamp(anchor.y + Math.sin(a) * d * 0.54, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
         }
       }
 
@@ -862,8 +864,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         r,
         style,
         mass,
-        vx: (rand() - 0.5) * 0.08,
-        vy: (rand() - 0.5) * 0.06,
+        vx: (rand() - 0.5) * 0.16,
+        vy: (rand() - 0.5) * 0.12,
         angle: rand() * TAU,
         spin: (rand() - 0.5) * 0.002,
         phase: rand() * TAU,
@@ -956,18 +958,18 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
     for (const b of bowls) {
       const c = currentAt(b.x, b.y, now);
-      b.vx += c.x * 0.55 * dt;
-      b.vy += c.y * 0.55 * dt;
-      b.vx += Math.sin(now * 0.00035 + b.phase * 2.7) * 0.00075 * dt;
-      b.vy += Math.cos(now * 0.0003 + b.phase * 2.1) * 0.0006 * dt;
-      b.vx += (b.homeX - b.x) * 0.000018 * dt;
-      b.vy += (b.homeY - b.y) * 0.000016 * dt;
-      b.vx *= 0.972;
-      b.vy *= 0.972;
+      b.vx += c.x * 0.72 * dt;
+      b.vy += c.y * 0.72 * dt;
+      b.vx += Math.sin(now * 0.00035 + b.phase * 2.7) * 0.00105 * dt;
+      b.vy += Math.cos(now * 0.0003 + b.phase * 2.1) * 0.00086 * dt;
+      b.vx += (b.homeX - b.x) * 0.000012 * dt;
+      b.vy += (b.homeY - b.y) * 0.000011 * dt;
+      b.vx *= 0.982;
+      b.vy *= 0.982;
       const speed = Math.hypot(b.vx, b.vy);
-      if (speed > 0.32) {
-        b.vx = (b.vx / speed) * 0.32;
-        b.vy = (b.vy / speed) * 0.32;
+      if (speed > 0.46) {
+        b.vx = (b.vx / speed) * 0.46;
+        b.vy = (b.vy / speed) * 0.46;
       }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
@@ -997,13 +999,13 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy) || 1;
-        const minDist = (a.r + b.r) * 1.22;
-        const nearDist = minDist * 1.42;
+        const minDist = (a.r + b.r) * 1.02;
+        const nearDist = minDist * 1.62;
 
         if (dist > minDist && dist < nearDist) {
           const nx = dx / dist;
           const ny = dy / dist;
-          const pull = (1 - (dist - minDist) / (nearDist - minDist)) * 0.00072 * dt;
+          const pull = (1 - (dist - minDist) / (nearDist - minDist)) * 0.00118 * dt;
           a.vx += nx * pull * (b.mass / (a.mass + b.mass));
           a.vy += ny * pull * (b.mass / (a.mass + b.mass)) * 0.62;
           b.vx -= nx * pull * (a.mass / (a.mass + b.mass));
