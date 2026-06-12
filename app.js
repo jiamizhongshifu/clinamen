@@ -27,7 +27,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const bowls = [];
   const AUDIO_SRC = "./assets/clinamen-loop-64k.mp3";
   const modelChoice = new URLSearchParams(window.location.search).get("model");
-  const BOWL_MODEL_SRCS = [modelChoice === "base3" ? "./assets/base3.glb" : "./assets/base2.glb"];
+  const BOWL_MODEL_SRCS = [modelChoice === "base2" ? "./assets/base2.glb" : "./assets/base3.glb"];
   const projectedBowl = new THREE.Vector3();
 
   let width = 1;
@@ -793,7 +793,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
   function bowlCount() {
     const area = width * height;
-    return clamp(Math.round(area / 43000), 18, width < 700 ? 20 : 28);
+    return clamp(Math.round(area / 38000), 20, width < 700 ? 24 : 32);
   }
 
   function bowlBounds(b) {
