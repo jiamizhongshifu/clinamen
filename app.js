@@ -252,36 +252,45 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         vec2 rippleSlip = vec2(
           sin((vUv.y + waveHeight) * 18.0 + uTime * 0.23),
           cos((vUv.x - waveHeight) * 16.0 - uTime * 0.19)
-        ) * (0.0015 + rippleEnergy * 0.0035);
-        vec2 domeUv = clamp(vUv + drift * 1.15 + grad * (uRefr * 1.55) + rippleSlip, 0.001, 0.999);
+        ) * (0.0018 + rippleEnergy * 0.0048);
+        vec2 domeUv = clamp(vUv + drift * 1.35 + grad * (uRefr * 1.85) + rippleSlip, 0.001, 0.999);
         float domeDepth = smoothstep(0.42, 1.0, domeUv.y);
-        vec2 domeCenter = vec2(0.50, 0.99);
-        vec2 domePerspective = vec2(0.54 + domeDepth * 0.12, 0.34 + domeDepth * 0.30);
+        vec2 domeCenter = vec2(0.50, 1.025);
+        vec2 domePerspective = vec2(0.84 + domeDepth * 0.08, 0.68 + domeDepth * 0.11);
         vec2 domeP = (domeUv - domeCenter) / domePerspective;
         float domeR = length(domeP);
-        float halfDome = 1.0 - smoothstep(-0.06, 0.08, domeP.y);
-        float domeFade = smoothstep(0.90, 0.58, domeR) * smoothstep(0.34, 0.50, domeUv.y) * halfDome;
-        float domeAngle = atan(domeP.y, domeP.x) / 6.2831853 + 0.5;
-        float majorRibs = lineMask(domeAngle * 32.0 + sin(domeR * 8.0 + waveHeight * 18.0) * 0.012, 0.018 + rippleEnergy * 0.006);
-        float minorRibs = lineMask(domeAngle * 88.0 + sin(domeR * 10.0 + waveHeight * 16.0) * 0.010, 0.006 + rippleEnergy * 0.003);
-        float majorRings = lineMask(domeR * 12.0 + sin(domeAngle * 18.0 + waveHeight * 14.0) * 0.010, 0.018 + rippleEnergy * 0.006);
-        float innerOculus = 1.0 - smoothstep(0.014, 0.044, abs(domeR - 0.22));
-        float outerRim = 1.0 - smoothstep(0.018, 0.062, abs(domeR - 0.82));
-        float skylightPool = domeFade * (1.0 - smoothstep(0.16, 0.80, domeR)) * 0.52;
+        float halfDome = 1.0 - smoothstep(-0.035, 0.075, domeP.y);
+        float domeTheta = atan(domeP.y, domeP.x);
+        float domeAngle = domeTheta / 6.2831853 + 0.5;
+        float scallop = noise(vec2(domeAngle, domeR) * vec2(7.0, 3.0) + uTime * 0.012);
+        float domeEdge = domeR + (scallop - 0.5) * 0.030 + sin(domeTheta * 9.0 + waveHeight * 22.0) * 0.010;
+        float domeFade = smoothstep(1.04, 0.74, domeEdge) * smoothstep(0.18, 0.36, domeUv.y) * halfDome;
+        float radialWarp = sin(domeR * 14.0 + waveHeight * 24.0) * 0.010 + grad.x * 0.055;
+        float ringWarp = sin(domeAngle * 24.0 + waveHeight * 20.0) * 0.012 + grad.y * 0.055;
+        float majorRibs = lineMask(domeAngle * 34.0 + radialWarp, 0.024 + rippleEnergy * 0.006);
+        float minorRibs = lineMask(domeAngle * 104.0 + radialWarp * 1.55, 0.008 + rippleEnergy * 0.003);
+        float ringA = lineMask(domeR * 10.5 + ringWarp, 0.022 + rippleEnergy * 0.006);
+        float ringB = lineMask(domeR * 21.0 + ringWarp * 1.35, 0.008 + rippleEnergy * 0.003);
+        float innerOculus = 1.0 - smoothstep(0.012, 0.046, abs(domeR - 0.19));
+        float oculusRibs = (1.0 - smoothstep(0.0, 0.24, domeR)) * lineMask(domeAngle * 24.0 + radialWarp, 0.016);
+        float outerRim = 1.0 - smoothstep(0.018, 0.070, abs(domeR - 0.93));
+        float skylightPool = domeFade * (1.0 - smoothstep(0.08, 0.96, domeR)) * 0.88;
         float skylightBreath = noise(domeUv * vec2(2.2, 2.8) + vec2(uTime * 0.012, uTime * -0.01));
         float surfaceFacet = smoothstep(0.010, 0.060, abs(waveSlope)) * (0.72 + rippleEnergy * 0.58);
         float skylightBreakup = noise(domeUv * vec2(18.0, 12.0) + grad * 24.0 + vec2(uTime * 0.028, -uTime * 0.022));
         float skylightStructure = domeFade * clamp(
-          majorRibs * 0.62
-          + minorRibs * 0.24
-          + majorRings * 0.58
-          + innerOculus * 0.62
-          + outerRim * 0.46,
+          majorRibs * 0.86
+          + minorRibs * 0.36
+          + ringA * 0.76
+          + ringB * 0.34
+          + innerOculus * 0.70
+          + oculusRibs * 0.42
+          + outerRim * 0.58,
           0.0,
           1.0
         );
-        skylightStructure *= 0.76 + surfaceFacet * 0.82 + skylightBreakup * 0.16;
-        float skylightSurface = (skylightPool * 0.22 + skylightStructure * 0.98) * (0.66 + skylightBreath * 0.08 + surfaceFacet * 1.42);
+        skylightStructure *= 0.96 + surfaceFacet * 0.86 + skylightBreakup * 0.16;
+        float skylightSurface = (skylightPool * 0.44 + skylightStructure * 0.48) * (0.76 + skylightBreath * 0.08 + surfaceFacet * 1.16);
 
         float light = waveSlope;
         col += max(light, 0.0) * vec3(0.78, 1.0, 1.08) * 1.35;
@@ -327,10 +336,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         col = mix(col, col * vec3(0.78, 0.9, 0.96), vignette * 0.34);
         col = mix(col, col * vec3(0.64, 0.80, 0.90), farPlane * 0.36);
 
-        col = mix(col, vec3(0.68, 1.0, 1.0), skylightPool * (0.064 + surfaceFacet * 0.050));
-        col = mix(col, vec3(0.78, 1.0, 1.0), skylightStructure * (0.118 + surfaceFacet * 0.112));
-        col += skylightSurface * vec3(0.27, 0.64, 0.66);
-        col += skylightStructure * max(light, 0.0) * vec3(0.64, 1.0, 1.0) * 0.92;
+        col = mix(col, vec3(0.66, 0.96, 1.0), skylightPool * (0.30 + surfaceFacet * 0.10));
+        col += skylightSurface * vec3(0.15, 0.40, 0.42);
+        col = mix(col, vec3(0.0, 0.34, 0.50), skylightStructure * (0.54 + surfaceFacet * 0.18));
+        col += skylightStructure * max(light, 0.0) * vec3(0.18, 0.68, 0.76) * 0.16;
 
         gl_FragColor = vec4(col, 1.0);
       }
