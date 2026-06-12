@@ -26,7 +26,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const ripples = [];
   const bowls = [];
   const AUDIO_SRC = "./assets/clinamen-loop-64k.mp3";
-  const BOWL_MODEL_SRCS = ["./assets/base2.glb"];
+  const modelChoice = new URLSearchParams(window.location.search).get("model");
+  const BOWL_MODEL_SRCS = [modelChoice === "base3" ? "./assets/base3.glb" : "./assets/base2.glb"];
   const projectedBowl = new THREE.Vector3();
 
   let width = 1;
