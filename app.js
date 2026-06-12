@@ -616,7 +616,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.60, 0.62, 0.60);
+          vec3 sideCol = vec3(0.52, 0.60, 0.62);
           vec3 innerCol = tint;
           vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
           col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
@@ -631,7 +631,9 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
           float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
+          float waterAmbient = sideFacing * (1.0 - smoothstep(0.34, 0.88, h));
           vec3 waterTint = vec3(0.07, 0.60, 0.74);
+          col = mix(col, waterTint, waterAmbient * 0.18);
           col = mix(col, waterTint, lowerWall * 0.42);
           col += lowerWall * vec3(0.00, 0.08, 0.11) * (0.32 + specA * 0.45);
           gl_FragColor = vec4(col, 1.0);
@@ -669,8 +671,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     if (b.syncedAt === now) return;
     updateBowlScreenSize(b);
     const surface = waterGradAtPx(b.x, b.y);
-    const waveBob = clamp(surface.h * 9.0, -3.4, 3.4);
-    const bob = Math.sin(now * 0.001 + b.phase) * 1.05 + b.lift * 2.6 + waveBob;
+    const waveBob = clamp(surface.h * 2.2, -0.75, 0.75);
+    const bob = Math.sin(now * 0.001 + b.phase) * 0.72 + b.lift * 1.35 + waveBob;
     const depthT = smoothstep(-b.r * 0.2, height + b.r * 0.55, b.y);
     const farT = 1 - depthT;
     const targetDiameter = b.r * 2.08;
@@ -680,10 +682,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     const worldZ = b.y - height * 0.5;
     const yaw = b.angle * 0.018;
     const perspectivePitch = -0.34 + depthT * 0.46;
-    const bobPitch = Math.sin(b.phase + now * 0.0004) * 0.025 + clamp(surface.y * 0.58, -0.045, 0.045);
-    const bobRoll = Math.cos(b.phase + now * 0.00035) * 0.022 - clamp(surface.x * 0.58, -0.045, 0.045);
+    const bobPitch = Math.sin(b.phase + now * 0.0004) * 0.015 + clamp(surface.y * 0.16, -0.012, 0.012);
+    const bobRoll = Math.cos(b.phase + now * 0.00035) * 0.013 - clamp(surface.x * 0.16, -0.012, 0.012);
 
-    b.model.position.set(worldX, -b.r * (0.12 + farT * 0.024) + bob * 0.22, worldZ);
+    b.model.position.set(worldX, -b.r * (0.12 + farT * 0.024) + bob * 0.14, worldZ);
     b.model.scale.setScalar(scale);
     b.model.rotation.set(perspectivePitch + bobPitch, yaw, bobRoll);
     b.syncedAt = now;
@@ -1014,7 +1016,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         const push = ((1 - dist / reach) ** 2) * force * 0.011;
         b.vx += (dx / dist) * push;
         b.vy += (dy / dist) * push;
-        b.lift = Math.min(1, b.lift + push * 0.5);
+        b.lift = Math.min(0.7, b.lift + push * 0.18);
       }
     }
   }
@@ -1068,7 +1070,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       b.y += b.vy * dt;
       updateBowlScreenSize(b);
       b.angle += (b.spin + (b.vx - b.vy) * 0.00035) * dt;
-      b.lift *= 0.94;
+      b.lift *= 0.90;
 
       if (started && speed > 0.045 && now - b.lastWake > 260) {
         waterDrop(b.x - b.vx * 36, b.y - b.vy * 36, clamp(b.r * 0.38, 14, 44), clamp(speed * 0.8, 0.04, 0.28));
@@ -1131,8 +1133,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
             b.vy += iy / b.mass;
             a.spin -= impulse * 0.000006;
             b.spin += impulse * 0.000006;
-            a.lift = Math.min(1, a.lift + impulse * 0.0009);
-            b.lift = Math.min(1, b.lift + impulse * 0.0009);
+            a.lift = Math.min(0.7, a.lift + impulse * 0.00035);
+            b.lift = Math.min(0.7, b.lift + impulse * 0.00035);
             contactForce = Math.max(contactForce, Math.abs(velocityAlongNormal) + impulse * 0.025);
           }
 
