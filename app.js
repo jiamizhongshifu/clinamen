@@ -21,7 +21,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const TAU = Math.PI * 2;
   const DPR = Math.min(window.devicePixelRatio || 1, 1);
   const SIM_NX = 144;
-  const MAX_WATER_SHADOWS = 32;
+  const MAX_WATER_SHADOWS = 48;
   const pointer = { x: 0, y: 0, px: 0, py: 0, down: false, active: false };
   const ripples = [];
   const bowls = [];
@@ -106,6 +106,21 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     return t * t * (3 - 2 * t);
   }
 
+  function depthForY(y) {
+    return smoothstep(height * 0.06, height * 0.96, y);
+  }
+
+  function perspectiveScaleForY(y) {
+    const depthT = depthForY(y);
+    return 0.60 + Math.pow(depthT, 1.16) * 1.16;
+  }
+
+  function updateBowlScreenSize(b) {
+    if (!b.baseR) b.baseR = b.r / Math.max(0.001, perspectiveScaleForY(b.y));
+    b.r = b.baseR * perspectiveScaleForY(b.y);
+    b.mass = b.r * b.r * 0.012;
+  }
+
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
@@ -133,22 +148,22 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     simBytes.fill(128);
   }
 
-  function simDrop(gx, gy, radius, strength) {
+  function simDrop(gx, gy, radiusX, radiusY, strength) {
     if (!waterU.length) return;
-    const r = Math.max(1.2, radius);
-    const r2 = r * r;
-    const x0 = Math.max(1, Math.floor(gx - r));
-    const x1 = Math.min(SIM_NX - 2, Math.ceil(gx + r));
-    const y0 = Math.max(1, Math.floor(gy - r));
-    const y1 = Math.min(simNY - 2, Math.ceil(gy + r));
+    const rx = Math.max(1.2, radiusX);
+    const ry = Math.max(1.2, radiusY);
+    const x0 = Math.max(1, Math.floor(gx - rx));
+    const x1 = Math.min(SIM_NX - 2, Math.ceil(gx + rx));
+    const y0 = Math.max(1, Math.floor(gy - ry));
+    const y1 = Math.min(simNY - 2, Math.ceil(gy + ry));
 
     for (let y = y0; y <= y1; y += 1) {
       for (let x = x0; x <= x1; x += 1) {
-        const dx = x - gx;
-        const dy = y - gy;
+        const dx = (x - gx) / rx;
+        const dy = (y - gy) / ry;
         const d2 = dx * dx + dy * dy;
-        if (d2 < r2) {
-          const k = Math.cos((Math.sqrt(d2) / r) * Math.PI * 0.5);
+        if (d2 < 1) {
+          const k = Math.cos(Math.sqrt(d2) * Math.PI * 0.5);
           waterU[y * SIM_NX + x] += strength * k * k;
         }
       }
@@ -158,8 +173,11 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   function waterDrop(x, y, radiusPx, strength) {
     const gx = (x / width) * SIM_NX;
     const gy = (y / height) * simNY;
+    const depthT = depthForY(y);
     const radius = Math.max(1.4, (radiusPx / Math.max(width, 1)) * SIM_NX);
-    simDrop(gx, gy, radius, strength);
+    const rx = radius * (0.74 + depthT * 0.32);
+    const ry = radius * (0.34 + depthT * 0.42);
+    simDrop(gx, gy, rx, ry, strength * (0.70 + depthT * 0.36));
   }
 
   function stepWaterSim() {
@@ -225,10 +243,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       uniform float uTime;
       uniform float uRefr;
       uniform int uBowlCount;
-      uniform vec4 uBowls[32];
-      uniform float uBowlOpacity[32];
-      uniform vec4 uSurfaceBowls[32];
-      uniform float uSurfaceOpacity[32];
+      uniform vec4 uBowls[48];
+      uniform float uBowlOpacity[48];
+      uniform vec4 uSurfaceBowls[48];
+      uniform float uSurfaceOpacity[48];
 
       float h(vec2 p) {
         return texture2D(uSim, clamp(p, 0.002, 0.998)).r - 0.5019608;
@@ -338,16 +356,16 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         float bottomShadow = 0.0;
         float contactReflection = 0.0;
         vec2 warpedUv = vUv + grad * 0.18;
-        for (int i = 0; i < 32; i += 1) {
+        for (int i = 0; i < 48; i += 1) {
           if (i >= uBowlCount) break;
           vec4 ns = uSurfaceBowls[i];
           vec2 nq = (warpedUv - ns.xy) / max(ns.zw, vec2(0.0001));
           float nd = dot(nq, nq);
-          float arcBand = 1.0 - smoothstep(0.024, 0.072, abs(nd - 0.76));
-          float lowerArc = smoothstep(0.18, 0.52, nq.y) * (1.0 - smoothstep(0.92, 1.10, nq.y));
+          float arcBand = 1.0 - smoothstep(0.026, 0.082, abs(nd - 0.72));
+          float lowerArc = smoothstep(-0.02, 0.30, nq.y) * (1.0 - smoothstep(0.88, 1.08, nq.y));
           float sideFade = 1.0 - smoothstep(0.98, 1.18, abs(nq.x));
-          float arcGlint = 1.0 - smoothstep(0.018, 0.058, abs(nd - 0.84));
-          contactReflection += (arcBand * 0.66 + arcGlint * 0.34) * lowerArc * sideFade * uSurfaceOpacity[i];
+          float arcGlint = 1.0 - smoothstep(0.018, 0.064, abs(nd - 0.82));
+          contactReflection += (arcBand * 0.70 + arcGlint * 0.30) * lowerArc * sideFade * uSurfaceOpacity[i] * 1.28;
 
           vec4 s = uBowls[i];
           vec2 q = (warpedUv - s.xy) / max(s.zw, vec2(0.0001));
@@ -359,8 +377,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         bottomShadow = clamp(bottomShadow, 0.0, 0.72);
         contactReflection = clamp(contactReflection, 0.0, 0.92);
         col = mix(col, col * vec3(0.40, 0.66, 0.73), bottomShadow);
-        col += contactReflection * vec3(0.18, 0.78, 0.88);
-        col = mix(col, vec3(0.58, 0.98, 1.0), contactReflection * 0.22);
+        col += contactReflection * vec3(0.22, 0.88, 0.96);
+        col = mix(col, vec3(0.64, 1.0, 1.0), contactReflection * 0.18);
         vec2 poolCenter = vec2(0.42 + 0.2 * cos(uTime * 0.045), 0.36 + 0.16 * sin(uTime * 0.063));
         float pool = 1.0 - smoothstep(0.0, 0.58, distance(vUv * vec2(1.0, 1.25), poolCenter * vec2(1.0, 1.25)));
         col += pool * vec3(0.045, 0.075, 0.082);
@@ -421,7 +439,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   function drawWaterGL(now) {
     packWaterSim();
     let count = 0;
-    for (const b of bowls) {
+    const shadowBowls = bowls.slice().sort((a, b) => b.y - a.y || b.r - a.r);
+    for (const b of shadowBowls) {
       if (count >= MAX_WATER_SHADOWS) break;
       let screenX = b.x;
       let screenY = b.y;
@@ -439,19 +458,19 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       const nearT = depthT;
       const farT = 1 - depthT;
       const base = count * 4;
-      const bottomOffsetY = b.r * (0.62 + farT * 1.08);
+      const bottomOffsetY = b.r * (0.54 + farT * 1.22);
       const contactOffsetY = b.r * (activeBowlModel.contactYOffset + nearT * activeBowlModel.contactNearYOffset);
       waterSurfaceShadowData[base] = screenX / width;
       waterSurfaceShadowData[base + 1] = (screenY + contactOffsetY) / height;
-      waterSurfaceShadowData[base + 2] = (b.r * activeBowlModel.contactWidth) / width;
-      waterSurfaceShadowData[base + 3] = (b.r * (activeBowlModel.contactHeight + nearT * activeBowlModel.contactNearHeight + farT * 0.04)) / height;
+      waterSurfaceShadowData[base + 2] = (b.r * (activeBowlModel.contactWidth + nearT * 0.06)) / width;
+      waterSurfaceShadowData[base + 3] = (b.r * (activeBowlModel.contactHeight + nearT * (activeBowlModel.contactNearHeight + 0.08) + farT * 0.04)) / height;
       const visibleFade = smoothstep(height * 0.20, height * 0.36, screenY);
-      waterSurfaceShadowAlpha[count] = (activeBowlModel.contactAlpha + nearT * activeBowlModel.contactNearAlpha) * visibleFade;
+      waterSurfaceShadowAlpha[count] = (activeBowlModel.contactAlpha + nearT * (activeBowlModel.contactNearAlpha + 0.075)) * visibleFade;
       waterShadowData[base] = screenX / width;
       waterShadowData[base + 1] = (screenY + bottomOffsetY) / height;
-      waterShadowData[base + 2] = (b.r * (0.86 + farT * 0.22)) / width;
-      waterShadowData[base + 3] = (b.r * (0.70 - farT * 0.12)) / height;
-      waterShadowAlpha[count] = (0.14 + farT * 0.22) * visibleFade;
+      waterShadowData[base + 2] = (b.r * (0.94 + farT * 0.16)) / width;
+      waterShadowData[base + 3] = (b.r * (0.88 - farT * 0.10)) / height;
+      waterShadowAlpha[count] = (0.26 + farT * 0.18) * visibleFade;
       count += 1;
     }
     waterGL.useProgram(waterProgram);
@@ -587,7 +606,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
         void main() {
           vec3 n = normalize(vNormal);
-          vec3 light = normalize(vec3(-0.012, 0.996, 0.055));
+          vec3 light = normalize(vec3(-0.004, 0.999, 0.022));
           vec3 viewDir = normalize(cameraPosition - vWorld);
           float h = clamp((vLocal.y - low) / max(0.001, high - low), 0.0, 1.0);
           float lambert = max(dot(n, light), 0.0);
@@ -597,11 +616,17 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
           float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
 
-          vec3 sideCol = vec3(0.60, 0.62, 0.60);
-          vec3 innerCol = tint;
-          vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
-          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.22, 0.92, h) * 0.48);
-          col *= 0.97 + wrap * 0.30;
+          vec3 sideCol = vec3(0.36, 0.50, 0.54);
+          vec3 innerCol = mix(tint, vec3(1.0, 0.994, 0.965), 0.48);
+          float innerLight = smoothstep(0.16, 0.60, h);
+          float upperInterior = smoothstep(0.24, 0.76, h);
+          float outerWall = smoothstep(0.12, 0.80, 1.0 - abs(n.y)) * (1.0 - smoothstep(0.46, 0.84, h));
+          vec3 col = mix(sideCol, innerCol, innerLight);
+          col = mix(col, vec3(1.0, 0.997, 0.972), upperInterior * (0.76 - outerWall * 0.36));
+          col *= 0.92 + wrap * 0.36;
+          col *= 1.0 - outerWall * 0.18;
+          col = mix(col, vec3(0.08, 0.52, 0.66), outerWall * 0.42);
+          col += upperInterior * vec3(0.045, 0.040, 0.026);
           col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
 
           float glowDistance = distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04));
@@ -609,12 +634,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float coreGlow = 1.0 - smoothstep(0.0, 0.30, glowDistance);
           col += (broadGlow * 0.11 + coreGlow * 0.018) * smoothstep(0.16, 0.74, h) * vec3(1.0, 0.93, 0.62);
 
-          float submerged = 1.0 - smoothstep(0.46, 0.78, h);
+          float submerged = 1.0 - smoothstep(0.48, 0.82, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
           float lowerWall = submerged * sideFacing * (0.62 + 0.38 * smoothstep(-0.08, 0.72, -n.y + 0.2));
-          vec3 waterTint = vec3(0.07, 0.60, 0.74);
-          col = mix(col, waterTint, lowerWall * 0.42);
-          col += lowerWall * vec3(0.00, 0.08, 0.11) * (0.32 + specA * 0.45);
+          vec3 waterTint = vec3(0.05, 0.62, 0.78);
+          col = mix(col, waterTint, lowerWall * 0.56);
+          col += lowerWall * vec3(0.00, 0.09, 0.13) * (0.24 + specA * 0.24);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -648,7 +673,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     const variant = bowlVariantFor(b);
     if (!b.model || !variant) return;
     if (b.syncedAt === now) return;
-    const bob = Math.sin(now * 0.001 + b.phase) * 1.05 + b.lift * 2.6;
+    updateBowlScreenSize(b);
+    const surface = waterGradAtPx(b.x, b.y);
+    const waveBob = clamp(surface.h * 9.0, -3.4, 3.4);
+    const bob = Math.sin(now * 0.001 + b.phase) * 1.05 + b.lift * 2.6 + waveBob;
     const depthT = smoothstep(-b.r * 0.2, height + b.r * 0.55, b.y);
     const farT = 1 - depthT;
     const targetDiameter = b.r * 2.08;
@@ -658,10 +686,10 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     const worldZ = b.y - height * 0.5;
     const yaw = b.angle * 0.018;
     const perspectivePitch = -0.34 + depthT * 0.46;
-    const bobPitch = Math.sin(b.phase + now * 0.0004) * 0.025;
-    const bobRoll = Math.cos(b.phase + now * 0.00035) * 0.022;
+    const bobPitch = Math.sin(b.phase + now * 0.0004) * 0.025 + clamp(surface.y * 0.58, -0.045, 0.045);
+    const bobRoll = Math.cos(b.phase + now * 0.00035) * 0.022 - clamp(surface.x * 0.58, -0.045, 0.045);
 
-    b.model.position.set(worldX, -b.r * (0.12 + farT * 0.024) + bob * 0.16, worldZ);
+    b.model.position.set(worldX, -b.r * (0.12 + farT * 0.024) + bob * 0.22, worldZ);
     b.model.scale.setScalar(scale);
     b.model.rotation.set(perspectivePitch + bobPitch, yaw, bobRoll);
     b.syncedAt = now;
@@ -848,7 +876,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
   function bowlCount() {
     const area = width * height;
-    return clamp(Math.round(area / 43000), 18, width < 700 ? 22 : 28);
+    return clamp(Math.round(area / 28000), width < 700 ? 24 : 34, width < 700 ? 32 : 46);
   }
 
   function bowlBounds(b) {
@@ -870,33 +898,44 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     }
     bowls.length = 0;
     const count = bowlCount();
+    const farQuota = Math.round(count * 0.42);
 
     for (let i = 0; i < count; i += 1) {
       let x = 0;
       let y = 0;
       let r = 0;
+      let baseR = 0;
       let placed = false;
 
       for (let attempt = 0; attempt < 900 && !placed; attempt += 1) {
-        const yNorm = (i + 0.05 + rand() * 0.78) / count;
-        const perspective = 0.54 + yNorm ** 1.38 * 1.92;
-        r = ((width < 700 ? 19 : 25) * perspective + rand() * (width < 700 ? 13 : 20)) * 1.3;
+        const farBand = i < farQuota;
+        const groupIndex = farBand ? i / Math.max(1, farQuota) : (i - farQuota) / Math.max(1, count - farQuota);
+        const yNorm = farBand
+          ? clamp(0.07 + rand() * 0.30 + groupIndex * 0.05, 0.055, 0.42)
+          : clamp(0.30 + Math.pow(groupIndex, 1.14) * 0.64 + (rand() - 0.5) * 0.08, 0.26, 0.94);
+        baseR = (width < 700 ? 29 : 34) + rand() * (width < 700 ? 14 : 18);
+        if (farBand) baseR *= 0.72 + rand() * 0.26;
+        else if (yNorm > 0.70 && rand() > 0.55) baseR *= 1.05 + rand() * 0.18;
+        else if (rand() > 0.82) baseR *= 0.72 + rand() * 0.18;
         x = ((i * 0.61803398875 + rand() * 0.18 + attempt * 0.071) % 1) * width;
         y = (0.055 + yNorm * 0.88 + (rand() - 0.5) * 0.065) * height;
+        r = baseR * perspectiveScaleForY(y);
 
         if (rand() > 0.88) x += (rand() > 0.5 ? 1 : -1) * width * 0.08;
         x = clamp(x, r * 0.58, width - r * 0.48);
         y = clamp(y, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
+        r = baseR * perspectiveScaleForY(y);
 
         placed = bowls.every((b) => {
           const dy = Math.abs(b.y - y);
-          const perspectiveGap = dy < (b.r + r) * 0.84 ? 0.84 : 0.66;
+          const perspectiveGap = dy < (b.r + r) * 0.76 ? 0.76 : 0.52;
           return Math.hypot(b.x - x, b.y - y) > (b.r + r) * perspectiveGap;
         });
 
         if (!placed && attempt > 620) {
-          r *= 0.80;
-          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.56);
+          baseR *= 0.88;
+          r = baseR * perspectiveScaleForY(y);
+          placed = bowls.every((b) => Math.hypot(b.x - x, b.y - y) > (b.r + r) * 0.44);
         }
       }
 
@@ -907,6 +946,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           const d = (anchor.r + r) * (1.12 + rand() * 0.24);
           x = clamp(anchor.x + Math.cos(a) * d, r * 0.58, width - r * 0.48);
           y = clamp(anchor.y + Math.sin(a) * d * 0.54, Math.max(height * 0.08, r * 0.72), height - r * 0.18);
+          r = baseR * perspectiveScaleForY(y);
         }
       }
 
@@ -917,6 +957,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         y,
         homeX: x,
         homeY: y,
+        baseR,
         r,
         style,
         mass,
@@ -973,7 +1014,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       const dx = b.x - x;
       const dy = b.y - y;
       const dist = Math.hypot(dx, dy) || 1;
-      const reach = 82 + force * 2.2;
+      const depthT = depthForY(y);
+      const reach = (58 + force * 1.9) * (0.68 + depthT * 0.52);
       if (dist < reach) {
         const push = ((1 - dist / reach) ** 2) * force * 0.011;
         b.vx += (dx / dist) * push;
@@ -1013,6 +1055,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     }
 
     for (const b of bowls) {
+      updateBowlScreenSize(b);
       const c = currentAt(b.x, b.y, now);
       b.vx += c.x * 0.72 * dt;
       b.vy += c.y * 0.72 * dt;
@@ -1029,6 +1072,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      updateBowlScreenSize(b);
       b.angle += (b.spin + (b.vx - b.vy) * 0.00035) * dt;
       b.lift *= 0.94;
 
@@ -1106,6 +1150,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         }
       }
     }
+    for (const b of bowls) updateBowlScreenSize(b);
   }
 
   function drawWater(now) {
