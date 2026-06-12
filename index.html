@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clinamen</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2304aad8'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='12' fill='%23f7ffff'/%3E%3Cellipse cx='32' cy='29' rx='17' ry='8' fill='%23dceeee'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Karla:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="work" aria-label="Interactive water installation inspired by Clinamen">
+      <canvas id="water" aria-hidden="true"></canvas>
+      <canvas id="scene" aria-hidden="true"></canvas>
+
+      <section class="title" aria-label="Artwork title">
+        <p>Celeste Boursier-Mougenot</p>
+        <h1>Clinamen</h1>
+      </section>
+
+      <button class="start" id="start" type="button" aria-label="Start sound">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M36 24 L78 50 L36 76 Z" />
+        </svg>
+      </button>
+
+      <nav class="dock" aria-label="Scene controls">
+        <button id="sound" type="button" aria-label="Toggle sound" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" />
+            <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+            <path d="M19 6a8.5 8.5 0 0 1 0 12" />
+          </svg>
+        </button>
+        <button id="reset" type="button" aria-label="Reset bowls">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+            <path d="M4 4v5h5" />
+          </svg>
+        </button>
+      </nav>
+    </main>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
