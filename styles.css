@@ -104,6 +104,19 @@ canvas {
   }
 }
 
+@media (max-width: 760px), (pointer: coarse) {
+  .depth-haze {
+    height: 31vh;
+    backdrop-filter: blur(2px) saturate(0.92) contrast(0.98);
+    -webkit-backdrop-filter: blur(2px) saturate(0.92) contrast(0.98);
+  }
+
+  .social-links a {
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+}
+
 .social-links {
   position: fixed;
   top: max(18px, env(safe-area-inset-top));

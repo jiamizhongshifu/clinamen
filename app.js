@@ -25,6 +25,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   const pointer = { x: 0, y: 0, px: 0, py: 0, down: false, active: false };
   const ripples = [];
   const bowls = [];
+  const sortedBowls = [];
   const AUDIO_SRC = "./assets/clinamen-loop-64k.mp3";
   const modelChoice = new URLSearchParams(window.location.search).get("model");
   const BOWL_MODEL_OPTIONS = {
@@ -91,6 +92,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   let audioTrack = null;
   let seed = 42;
   let lastSceneRender = 0;
+  let sortFrame = -1;
 
   function rand() {
     seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -204,6 +206,15 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       y: waterU[i + SIM_NX] - waterU[i - SIM_NX],
       h: waterU[i],
     };
+  }
+
+  function updateSortedBowls(frameId) {
+    if (sortFrame === frameId && sortedBowls.length === bowls.length) return sortedBowls;
+    sortedBowls.length = bowls.length;
+    for (let i = 0; i < bowls.length; i += 1) sortedBowls[i] = bowls[i];
+    sortedBowls.sort((a, b) => a.y - b.y || a.r - b.r);
+    sortFrame = frameId;
+    return sortedBowls;
   }
 
   function packWaterSim() {
@@ -438,20 +449,12 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
   function drawWaterGL(now) {
     packWaterSim();
     let count = 0;
-    const shadowBowls = bowls.slice().sort((a, b) => b.y - a.y || b.r - a.r);
-    for (const b of shadowBowls) {
+    const shadowBowls = updateSortedBowls(Math.floor(now));
+    for (let i = shadowBowls.length - 1; i >= 0; i -= 1) {
+      const b = shadowBowls[i];
       if (count >= MAX_WATER_SHADOWS) break;
-      let screenX = b.x;
-      let screenY = b.y;
-      if (bowlModelsReady && b.model) {
-        updateBowlModel(b, now);
-        b.model.updateMatrixWorld(true);
-        projectedBowl.setFromMatrixPosition(b.model.matrixWorld).project(threeCamera);
-        screenX = (projectedBowl.x * 0.5 + 0.5) * width;
-        screenY = (0.5 - projectedBowl.y * 0.5) * height;
-        const anchorDepthT = smoothstep(-b.r * 0.2, height + b.r * 0.55, b.y);
-        screenY += b.r * (0.10 + (1 - anchorDepthT) * 0.24);
-      }
+      const screenX = b.screenX ?? b.x;
+      const screenY = b.screenY ?? b.y;
       if (screenX < b.r * 0.35 || screenX > width - b.r * 0.35 || screenY < Math.max(height * 0.14, b.r * 0.85) || screenY > height - b.r * 0.2) continue;
       const depthT = smoothstep(height * 0.16, height - b.r * 0.18, screenY);
       const nearT = depthT;
@@ -691,14 +694,18 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     b.model.position.set(worldX, -b.r * (0.12 + farT * 0.024) + bob * 0.07, worldZ);
     b.model.scale.setScalar(scale);
     b.model.rotation.set(perspectivePitch + bobPitch, yaw, bobRoll);
+    b.model.updateMatrixWorld(true);
+    projectedBowl.setFromMatrixPosition(b.model.matrixWorld).project(threeCamera);
+    b.screenX = (projectedBowl.x * 0.5 + 0.5) * width;
+    b.screenY = (0.5 - projectedBowl.y * 0.5) * height + b.r * (0.10 + farT * 0.24);
     b.syncedAt = now;
   }
 
   function drawThreeScene(now) {
     if (!threeRenderer || !threeScene || !threeCamera || !bowlModelsReady) return false;
     syncBowlModels();
-    bowls.sort((a, b) => a.y - b.y);
-    for (const b of bowls) updateBowlModel(b, now);
+    const renderBowls = updateSortedBowls(Math.floor(now));
+    for (const b of renderBowls) updateBowlModel(b, now);
     threeRenderer.render(threeScene, threeCamera);
     return true;
   }
@@ -975,6 +982,8 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         lastHit: 0,
         lastWake: 0,
         lift: 0,
+        screenX: x,
+        screenY: y,
       });
     }
     spreadBowlBands(0.16);
@@ -1562,14 +1571,16 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
     scene.clearRect(0, 0, width, height);
 
-    bowls.sort((a, b) => a.y - b.y);
-    for (const b of bowls) drawBowl(b, now);
+    const renderBowls = updateSortedBowls(Math.floor(now));
+    for (const b of renderBowls) drawBowl(b, now);
   }
 
   function frame(now) {
+    const frameId = Math.floor(now);
     simulate(now);
-    drawWater(now);
+    updateSortedBowls(frameId);
     drawScene(now);
+    drawWater(now);
     requestAnimationFrame(frame);
   }
 
