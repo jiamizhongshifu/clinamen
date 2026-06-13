@@ -520,15 +520,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     threeCamera = new THREE.OrthographicCamera(-width * 0.5, width * 0.5, height * 0.5, -height * 0.5, -3000, 3000);
     resizeThreeScene();
 
-    threeScene.add(new THREE.AmbientLight(0xffffff, 1.25));
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x13a6c7, 1.15);
-    threeScene.add(hemi);
-    const key = new THREE.DirectionalLight(0xffffff, 4.6);
-    key.position.set(-0.02, 2.25, 0.06);
-    threeScene.add(key);
-    const fill = new THREE.DirectionalLight(0xd7fbff, 0.55);
-    fill.position.set(0.45, 0.32, 0.26);
-    threeScene.add(fill);
+    // Bowl lighting is authored in makeBowlMaterial so the GLB keeps a stable painted-water look.
 
     const loader = new GLTFLoader();
     Promise.all(
@@ -613,28 +605,40 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           float h = clamp((vLocal.y - low) / max(0.001, high - low), 0.0, 1.0);
           float lambert = max(dot(n, light), 0.0);
           float backLambert = max(dot(-n, light), 0.0);
-          float wrap = max(lambert, backLambert * 0.46);
+          float wrap = max(lambert, backLambert * 0.32);
           vec3 halfDir = normalize(light + viewDir);
-          float specA = pow(max(dot(n, halfDir), 0.0), 8.0);
-          float specB = pow(max(dot(-n, halfDir), 0.0), 12.0) * 0.40;
+          float specA = pow(max(dot(n, halfDir), 0.0), 10.0);
+          float specB = pow(max(dot(-n, halfDir), 0.0), 16.0) * 0.18;
 
-          vec3 sideCol = vec3(0.88, 0.87, 0.82);
-          vec3 innerCol = tint;
-          vec3 col = mix(sideCol, innerCol, smoothstep(0.20, 0.88, h));
-          col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.34, 0.94, h) * 0.42);
-          col *= 0.97 + wrap * 0.30;
-          col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
+          float upwardSurface = smoothstep(0.24, 0.88, n.y);
+          float sideFacing = smoothstep(0.10, 0.82, 1.0 - abs(n.y));
+          float lowBody = smoothstep(0.03, 0.14, h) * (1.0 - smoothstep(0.72, 0.94, h));
+          float upperBowl = smoothstep(0.30, 0.92, h);
+          float innerMask = clamp(upwardSurface * smoothstep(0.22, 0.82, h), 0.0, 1.0);
+          float rimMask = smoothstep(0.78, 0.98, h) * smoothstep(0.06, 0.44, abs(n.y));
+
+          vec3 sideCol = vec3(0.70, 0.79, 0.80);
+          vec3 innerCol = mix(tint, vec3(0.995, 0.99, 0.955), 0.34);
+          vec3 col = mix(sideCol, innerCol, innerMask);
+          col = mix(col, vec3(0.98, 0.97, 0.92), upperBowl * upwardSurface * 0.22);
+          col *= 0.94 + wrap * 0.26;
+
+          float topWash = upwardSurface * smoothstep(0.18, 0.70, h) * (0.48 + lambert * 0.52);
+          col = mix(col, vec3(1.0, 0.992, 0.955), topWash * 0.18);
+          col += vec3(1.0, 0.985, 0.92) * (specA * 0.055 + specB * 0.045);
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
-          float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
-          vec3 blueLight = normalize(vec3(0.0, 0.12, 1.0));
-          float frontLambert = max(dot(n, blueLight), 0.0) * sideFacing;
-          float sideBlueWrap = sideFacing * (0.34 + 0.34 * smoothstep(0.0, 0.58, n.z + 0.18));
-          float lowBody = smoothstep(0.02, 0.12, h) * (1.0 - smoothstep(0.72, 0.96, h));
-          float blueBounce = clamp((frontLambert * 0.82 + sideBlueWrap) * lowBody * (0.66 + submerged * 0.28), 0.0, 0.92);
-          vec3 waterBounceCol = vec3(0.00, 0.24, 0.44);
-          col = mix(col, waterBounceCol, blueBounce * 0.72);
-          col += blueBounce * vec3(0.00, 0.05, 0.08) * (0.08 + specA * 0.05);
+          vec3 blueLight = normalize(vec3(0.0, 0.18, 1.0));
+          float frontLambert = max(dot(n, blueLight), 0.0);
+          float frontFacing = smoothstep(-0.06, 0.56, n.z);
+          float outerWallMask = clamp(sideFacing * lowBody * frontFacing * (1.0 - innerMask * 0.92), 0.0, 1.0);
+          float sideBlueWrap = sideFacing * lowBody * (1.0 - upwardSurface * 0.82) * (0.32 + 0.42 * frontFacing);
+          float blueBounce = clamp((frontLambert * 0.72 + sideBlueWrap) * (0.72 + submerged * 0.22), 0.0, 0.88);
+          blueBounce *= max(outerWallMask, sideBlueWrap * 0.86);
+          vec3 waterBounceCol = vec3(0.025, 0.28, 0.44);
+          col = mix(col, waterBounceCol, blueBounce * 0.84);
+          col += blueBounce * vec3(0.00, 0.045, 0.075) * 0.08;
+          col = mix(col, vec3(0.985, 0.985, 0.94), rimMask * 0.36);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -794,8 +798,6 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
         float bowlDepth = smoothstep(0.05, 0.96, innerNorm);
         vec3 innerCol = mix(vec3(0.98, 0.97, 0.92), vec3(0.62, 0.64, 0.62), bowlDepth);
         innerCol = mix(innerCol, vec3(0.94, 0.93, 0.88), smoothstep(-ry * 0.48, ry * 0.38, p.y) * 0.34);
-        float ceramicGlow = 1.0 - smoothstep(0.0, 0.38, distance(innerP / innerR, vec2(0.10, 0.24)));
-        innerCol += ceramicGlow * vec3(0.09, 0.08, 0.05);
         outColor = mix(outColor, vec4(innerCol, 1.0), inner * (1.0 - rim * 0.5));
 
         float highlight = insideEllipse(p - vec2(-rx * 0.24, ry * 0.18), vec2(rx * 0.22, max(ry * 0.16, 5.0)), 2.0);
