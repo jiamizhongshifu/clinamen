@@ -464,7 +464,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       waterSurfaceShadowData[base + 2] = (b.r * (1.02 + nearT * 0.10 + farT * 0.02)) / width;
       waterSurfaceShadowData[base + 3] = (b.r * (0.36 + nearT * 0.72 - farT * 0.02)) / height;
       const visibleFade = smoothstep(height * 0.20, height * 0.36, screenY);
-      waterSurfaceShadowAlpha[count] = 0.25 * visibleFade * (0.52 + nearT * 0.48);
+      waterSurfaceShadowAlpha[count] = 0.15 * visibleFade * (0.52 + nearT * 0.48);
       waterShadowData[base] = screenX / width;
       waterShadowData[base + 1] = (screenY + bottomOffsetY) / height;
       waterShadowData[base + 2] = (b.r * (1.02 + farT * 0.18)) / width;
@@ -624,11 +624,6 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           col = mix(col, vec3(0.995, 0.99, 0.955), smoothstep(0.34, 0.94, h) * 0.42);
           col *= 0.97 + wrap * 0.30;
           col += vec3(1.0, 0.985, 0.92) * (specA + specB) * 0.12;
-
-          float glowDistance = distance(vLocal.xz / max(high - low, 0.001), vec2(0.08, -0.04));
-          float broadGlow = 1.0 - smoothstep(0.0, 0.76, glowDistance);
-          float coreGlow = 1.0 - smoothstep(0.0, 0.30, glowDistance);
-          col += (broadGlow * 0.11 + coreGlow * 0.018) * smoothstep(0.16, 0.74, h) * vec3(1.0, 0.93, 0.62);
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
