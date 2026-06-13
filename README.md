@@ -10,6 +10,7 @@ An interactive web artwork inspired by Celeste Boursier-Mougenot's installation 
 
 - Live site: [https://clinamen.vercel.app](https://clinamen.vercel.app)
 - Repository: [https://github.com/jiamizhongshifu/clinamen](https://github.com/jiamizhongshifu/clinamen)
+- Follow the creator on X: [@drmrzhong](https://x.com/intent/follow?screen_name=drmrzhong)
 
 ## Experience
 
@@ -77,4 +78,3 @@ Inspired by:
 - Celeste Boursier-Mougenot, *clinamen*
 - Bourse de Commerce, Paris
 - The sensory relationship between water, ceramic objects, architecture, and sound
-
