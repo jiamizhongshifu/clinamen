@@ -631,24 +631,14 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
 
           float submerged = 1.0 - smoothstep(0.46, 0.78, h);
           float sideFacing = smoothstep(0.16, 0.86, 1.0 - abs(n.y));
-          vec3 localN = normalize(vLocalNormal);
-          vec2 radialDir = normalize(vLocal.xz + vec2(0.0001, -0.0001));
-          float radialOut = dot(normalize(localN.xz + vec2(0.0001, 0.0001)), radialDir);
-          float radialDist = length(vLocal.xz) / max(high - low, 0.001);
-          float outerRadius = smoothstep(0.12, 0.30, radialDist);
-          float outerDirection = smoothstep(-0.22, 0.22, radialOut);
-          float viewFacing = smoothstep(0.02, 0.34, dot(n, viewDir));
-          float outerWall = outerRadius * outerDirection;
-          float visibleExterior = max(outerWall, viewFacing * sideFacing * (1.0 - smoothstep(0.50, 0.78, h)));
-          float exteriorBand = visibleExterior * sideFacing * (1.0 - smoothstep(0.76, 0.99, h));
-          float exteriorSide = visibleExterior * sideFacing * (1.0 - smoothstep(0.84, 1.0, h));
-          float lowerWall = submerged * visibleExterior * (0.50 + 0.50 * smoothstep(-0.12, 0.62, -n.y + 0.18));
-          float exteriorWaterline = visibleExterior * (1.0 - smoothstep(0.48, 0.82, h));
-          vec3 exteriorWallCol = vec3(0.10, 0.36, 0.54);
-          vec3 exteriorLowerCol = vec3(0.02, 0.24, 0.42);
-          col = mix(col, exteriorWallCol, clamp(exteriorBand * 1.34 + exteriorSide * 0.58, 0.0, 0.96));
-          col = mix(col, exteriorLowerCol, clamp(exteriorWaterline * 0.44 + lowerWall * 0.50, 0.0, 0.76));
-          col += lowerWall * vec3(0.00, 0.05, 0.07) * (0.16 + specA * 0.14);
+          vec3 blueLight = normalize(vec3(0.0, -1.0, 0.0));
+          float bottomLambert = max(dot(n, blueLight), 0.0);
+          float sideBlueWrap = sideFacing * (0.26 + 0.28 * smoothstep(0.0, 0.52, -n.y + 0.22));
+          float lowBody = smoothstep(0.02, 0.16, h) * (1.0 - smoothstep(0.62, 0.92, h));
+          float blueBounce = clamp((bottomLambert * 0.48 + sideBlueWrap) * lowBody * (0.50 + submerged * 0.28), 0.0, 0.78);
+          vec3 waterBounceCol = vec3(0.06, 0.34, 0.52);
+          col = mix(col, waterBounceCol, blueBounce * 0.42);
+          col += blueBounce * vec3(0.00, 0.05, 0.07) * (0.07 + specA * 0.05);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
