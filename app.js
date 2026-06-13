@@ -251,6 +251,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
       varying vec2 vUv;
       uniform sampler2D uSim;
       uniform vec2 uTexel;
+      uniform vec2 uResolution;
       uniform float uTime;
       uniform float uRefr;
       uniform int uBowlCount;
@@ -316,9 +317,11 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
           cos((vUv.x - waveHeight) * 16.0 - uTime * 0.19)
         ) * (0.0018 + rippleEnergy * 0.0048);
         vec2 domeUv = clamp(vUv + drift * 1.35 + grad * (uRefr * 1.85) + rippleSlip, 0.001, 0.999);
+        float viewportAspect = uResolution.x / max(uResolution.y, 1.0);
+        float domeYFit = sqrt(clamp(viewportAspect / 1.45, 0.35, 1.0));
         float domeDepth = smoothstep(0.42, 1.0, domeUv.y);
         vec2 domeCenter = vec2(0.50, 1.025);
-        vec2 domePerspective = vec2(0.84 + domeDepth * 0.08, 0.68 + domeDepth * 0.11);
+        vec2 domePerspective = vec2(0.84 + domeDepth * 0.08, (0.68 + domeDepth * 0.11) * domeYFit);
         vec2 domeP = (domeUv - domeCenter) / domePerspective;
         float domeR = length(domeP);
         float halfDome = 1.0 - smoothstep(-0.035, 0.075, domeP.y);
@@ -422,7 +425,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     waterGL.enableVertexAttribArray(pos);
     waterGL.vertexAttribPointer(pos, 2, waterGL.FLOAT, false, 0, 0);
 
-    for (const name of ["uSim", "uTexel", "uTime", "uRefr", "uBowlCount"]) {
+    for (const name of ["uSim", "uTexel", "uResolution", "uTime", "uRefr", "uBowlCount"]) {
       waterUniforms[name] = waterGL.getUniformLocation(waterProgram, name);
     }
     waterUniforms.uBowls = waterGL.getUniformLocation(waterProgram, "uBowls[0]");
@@ -480,6 +483,7 @@ import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
     waterGL.bindTexture(waterGL.TEXTURE_2D, simTexture);
     waterGL.texSubImage2D(waterGL.TEXTURE_2D, 0, 0, 0, SIM_NX, simNY, waterGL.LUMINANCE, waterGL.UNSIGNED_BYTE, simBytes);
     waterGL.uniform2f(waterUniforms.uTexel, 1 / SIM_NX, 1 / simNY);
+    waterGL.uniform2f(waterUniforms.uResolution, width, height);
     waterGL.uniform1f(waterUniforms.uTime, now / 1000);
     waterGL.uniform1f(waterUniforms.uRefr, 0.58);
     waterGL.uniform1i(waterUniforms.uBowlCount, count);
