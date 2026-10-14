@@ -8,7 +8,7 @@ An interactive web artwork inspired by Celeste Boursier-Mougenot's installation 
 
 ## Preview
 
-- Live site: [https://clinamen.vercel.app](https://clinamen.vercel.app)
+- Live site: [https://clinamen.samzhong.cc](https://clinamen.samzhong.cc)
 - Repository: [https://github.com/jiamizhongshifu/clinamen](https://github.com/jiamizhongshifu/clinamen)
 - Follow the creator on X: [@drmrzhong](https://x.com/intent/follow?screen_name=drmrzhong)
 
