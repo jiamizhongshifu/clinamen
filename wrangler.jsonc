@@ -1,0 +1,18 @@
+{
+  "name": "clinamen",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "routes": [{ "pattern": "clinamen.samzhong.cc", "custom_domain": true }],
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/assets/clinamen-loop-64k.mp3"]
+  },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "clinamen-media"
+    }
+  ]
+}

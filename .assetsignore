@@ -1,0 +1,13 @@
+.git
+.gitignore
+.vercel
+.vercelignore
+.wrangler
+node_modules
+README.md
+wrangler.jsonc
+worker
+assets/base.glb
+assets/clinamen-loop.mp3
+# over the 25 MiB static asset limit, served from R2 by worker/index.js
+assets/clinamen-loop-64k.mp3
